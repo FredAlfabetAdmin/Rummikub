@@ -15,7 +15,7 @@ class Environment:
         current_player = 0
         not_finished = True
         while(not_finished):
-            print("Now playing player: " + str(Board.players[current_player].id))
+            #print("Now playing player: " + str(Board.players[current_player].id))
             # Determine if the player wants to place a move or if they want to draw a new piece.
                 # With every possible move, you have to make a collection of all possible continuous moves.
                 # This includes overlapping ones.
@@ -64,6 +64,10 @@ class Environment:
                 current_player += 1
 
         # Analyze the score
+        print("Final board looks like this:")
+        for combination in Board.field:
+            print(combination)
+
         for player in Board.players:
             hand_score = 0
             for tile in player.hand:
@@ -71,6 +75,7 @@ class Environment:
             print(f"Player {player.id} ended with score: {hand_score} (plays: {player.plays})")
         pass
     
+    # Create the board
     def initialize(self):
         board = Board
         board.setup(self)
@@ -126,8 +131,6 @@ class Board:
         self.field.append(tiles)
         for tile in tiles:
             hand = remove_card(hand, tile[0], tile[1])
-        print("Hand end play_set")
-        print(hand)
         return hand
 
 class Tile:
