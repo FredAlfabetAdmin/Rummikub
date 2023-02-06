@@ -30,13 +30,28 @@ class Environment:
             hand = Board.players[current_player].hand
             for tile in hand:
                 # Caluculate all the possible moves:
-                # Connector piece
-                # 3-4 Color set
                 # 3+ numerical set
                 if check_if_tile_in_deck(tile.value-1, tile.color, hand) and check_if_tile_in_deck(tile.value+1, tile.color, hand):
                     # Play the tile(s)
                     hand = Board.play_set(Board, [[tile.value-1, tile.color], [tile.value, tile.color], [tile.value+1, tile.color]], hand)
                     Board.players[current_player].plays += 1
+
+                # Connector piece
+                #'''
+                for iter in range(len(Board.field)):
+                    tail = Board.field[iter][0]
+                    head = Board.field[iter][-1]
+                    if tail[0] == tile.value + 1 and tail[1] == tile.color:
+                        # Appendable before this combination
+                        #hand = Board.play_connector(Board, tile, hand, 0),
+                        hand = Board.play_connector(Board, iter, 0, tile ,hand)
+                        pass
+                    elif head[0] == tile.value - 1 and tail[1] == tile.color:
+                        # Appendable after this combination
+                        pass                
+                #'''
+                # 3-4 Color set
+
 
                 # If you play a tile, color set or numerical set, save the hand and calculate the rewarding from future runs.
                 # then also save the 
@@ -44,11 +59,6 @@ class Environment:
 
                 # If possible to play, save the state. Then, continue with a new run (funtioncall) with the new board (calculating reward).
                 # then, continue with the current board.
-
-
-                #print(tile.value)
-                #print(tile.color)
-            #input("xxxxxx")
 
             # Draw or move
             Board.players[current_player].draw()
@@ -68,7 +78,10 @@ class Environment:
         for combination in Board.field:
             print(combination)
 
+        print("")
+        print("Final player decks looks like:")
         for player in Board.players:
+            print(player.hand)
             hand_score = 0
             for tile in player.hand:
                 hand_score += tile.value
@@ -99,7 +112,6 @@ class Player:
     def __repr__(self) -> str:
         result = "Player: " + str(self.id) + " "
         for tile in self.hand:
-            #print(tile)
             result += tile.get_data() + " "
         return result
 
@@ -133,6 +145,11 @@ class Board:
             hand = remove_card(hand, tile[0], tile[1])
         return hand
 
+    def play_connector(self, field_location, insert_location, tile, hand):
+        self.field[field_location].insert(insert_location, [tile.value, tile.color])
+        hand = remove_card(hand, tile.value, tile.color)
+        return hand
+
 class Tile:
     value = None
     color = None
@@ -159,6 +176,15 @@ def check_if_tile_in_deck(value, color, deck):
     for tile in deck:
         if tile.value is value and tile.color is color:
             return True
+    return False # Possibly?
+
+def check_if_tile_is_edge(value, color, field):
+    for combination in field:
+        if combination[0].value == value and combination[0].color == color:
+            return True
+        if combination[-1].value == value and combination[-1].color == color:
+            return True
+    return False
 
 def remove_card(hand, value, color):
     for tile in range(len(hand)):
