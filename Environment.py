@@ -1,4 +1,6 @@
 import numpy as np
+colors = ["Red","Black", "Blue", "Orange"]
+
 class Environment:
     total_players = 2
     def __init__(self) -> None:
@@ -14,7 +16,8 @@ class Environment:
         # Let each player play until finished
         current_player = 0
         not_finished = True
-        while(not_finished):
+        
+        while(not_finished):  # IF PLAYED, IT SHOULD START THIS LOOP AGAIN.
             #print("Now playing player: " + str(Board.players[current_player].id))
             # Determine if the player wants to place a move or if they want to draw a new piece.
                 # With every possible move, you have to make a collection of all possible continuous moves.
@@ -26,46 +29,78 @@ class Environment:
                 # - part of 3+ numerical set
 
                 # This should give a value to the expected utility of said piece.
-            
+            moved = False
             hand = Board.players[current_player].hand
+            
             for tile in hand:
                 # Caluculate all the possible moves:
+                # 3-4 Color set
+                matching_tiles = []
+                matching_tiles.append([tile.value, tile.color])
+                for single_tile in hand:
+                    if single_tile.value == tile.value and single_tile.color != tile.color:
+                        confirmed = True
+                        for matched in matching_tiles:
+                            if matched[1] == single_tile.color:
+                                confirmed = False
+                        if confirmed:
+                            matching_tiles.append([single_tile.value, single_tile.color])
+
+                if len(matching_tiles) > 2:
+                    hand = Board.play_set(Board, matching_tiles, hand)
+                    moved = True
+
                 # 3+ numerical set
                 if check_if_tile_in_deck(tile.value-1, tile.color, hand) and check_if_tile_in_deck(tile.value+1, tile.color, hand):
                     # Play the tile(s)
+                    moved = True
                     hand = Board.play_set(Board, [[tile.value-1, tile.color], [tile.value, tile.color], [tile.value+1, tile.color]], hand)
                     Board.players[current_player].plays += 1
 
                 # Connector piece
-                #'''
-                for iter in range(len(Board.field)):
-                    tail = Board.field[iter][0]
-                    head = Board.field[iter][-1]
-                    if tail[0] == tile.value + 1 and tail[1] == tile.color:
-                        # Appendable before this combination
-                        #hand = Board.play_connector(Board, tile, hand, 0),
-                        hand = Board.play_connector(Board, iter, 0, tile ,hand)
-                        pass
-                    elif head[0] == tile.value - 1 and tail[1] == tile.color:
-                        # Appendable after this combination
-                        pass                
-                #'''
-                # 3-4 Color set
+                    # CP can be before or after, if Set.type = Value.
+                    # CP can be inbetween if Set.type = Value and len(Set.type) > 5 (technically more if deeper understanding of tiles is implement, as using multiple could create 2 new valid sets)
 
+                for set_i in range(len(Board.field)):
+                    set = Board.field[set_i]
 
-                # If you play a tile, color set or numerical set, save the hand and calculate the rewarding from future runs.
-                # then also save the 
+                    if set.type_of_set == "V":
+                        if set.tiles[0][1] == tile.color:
+                            # If beginning, end to beginning
+                            if set.tiles[0][0] == tile.value + 1:
+                                # Play at pos 0
+                                hand = Board.play_connector(Board, set_i, 0, tile, hand)
+                            
+                            elif set.tiles[len(set.tiles)-1][0] == tile.value - 1:
+                                # Play at the end.
+                                hand = Board.play_connector(Board, set_i, len(set.tiles), tile, hand)
 
+                    if set.type_of_set == "C": 
+                        if set.tiles[0][0] == tile.value:
+                            possible = True
+                            for set_tile_i in range(len(set.tiles)):
+                                color_to_check = set.tiles[set_tile_i][1]
+                                if color_to_check == tile.color:
+                                    possible = False
+                                    break
 
-                # If possible to play, save the state. Then, continue with a new run (funtioncall) with the new board (calculating reward).
-                # then, continue with the current board.
+                            if possible:
+                                hand = Board.play_connector(Board, set_i, 0,tile, hand)
+                                #played = True
+                                break
 
             # Draw or move
-            Board.players[current_player].draw()
+            if(not moved):
+                Board.players[current_player].draw()
 
             # Check if finished
-            if len(Board.deck) == 0:
+            if len(Board.players[current_player].hand) == 0:
                 not_finished = False
+                break
+
+            if len(Board.deck) == 0 and moved == False:
+                not_finished = False
+                break
 
             # Select next player
             if current_player+1 == self.total_players:
@@ -125,7 +160,7 @@ class Board:
     def setup(self):
         # Add 
         for number in range(1, 13):
-            for color in range(1,4):
+            for color in range(0,4):
                 Board.deck.append(Tile(number, color))
                 Board.deck.append(Tile(number, color))
         
@@ -140,13 +175,15 @@ class Board:
             Board.players.append(new_player)
     
     def play_set(self, tiles, hand):
-        self.field.append(tiles)
+        self.field.append(Set(tiles))
+        #self.field.append(tiles)
+
         for tile in tiles:
             hand = remove_card(hand, tile[0], tile[1])
         return hand
 
     def play_connector(self, field_location, insert_location, tile, hand):
-        self.field[field_location].insert(insert_location, [tile.value, tile.color])
+        self.field[field_location].tiles.insert(insert_location, [tile.value, tile.color])
         hand = remove_card(hand, tile.value, tile.color)
         return hand
 
@@ -158,7 +195,6 @@ class Tile:
         self.color = self.determine_tile(color)
 
     def determine_tile(self, color):
-        colors = ["Red","Black", "Blue", "Orange"]
         return colors[color]
 
     def convert_information_to_tile(self, value, color):
@@ -170,6 +206,29 @@ class Tile:
 
     def __repr__(self) -> str:
         return self.get_data()
+        pass
+
+class Set:
+    type_of_set = ""
+    tiles = []
+
+    def __init__(self, tiles) -> None:
+        if tiles[0][0] == tiles[1][0]:
+            self.type_of_set = "C"
+        else:
+            self.type_of_set = "V"
+        self.tiles = tiles 
+    
+    def __repr__(self) -> str:
+        resulting_string = ""
+        if self.type_of_set == "V":
+            resulting_string += "Value"
+        else:
+            resulting_string += "Color"
+        resulting_string += " - "
+        for tile in self.tiles:
+            resulting_string += tile[1] + str(tile[0]) + " "
+        return resulting_string
         pass
 
 def check_if_tile_in_deck(value, color, deck):
